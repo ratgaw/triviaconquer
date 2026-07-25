@@ -1,13 +1,15 @@
-// Talks to the Cloudflare Pages Function at /api/leaderboard (see functions/api/leaderboard.js).
-// That endpoint only exists once this site is deployed on Cloudflare Pages with a KV binding —
-// locally, or on any other static host, these calls fail and the UI shows a "not available" note
-// instead of breaking the rest of the app.
+// Talks to the Cloudflare Worker at /api/leaderboard (see worker.js). Two independent boards
+// share this endpoint via a `mode` param: 'classic' (best score out of a 20-question round) and
+// 'endless' (highest streak reached in Endless Mode) — kept separate since comparing a score
+// out of 20 against an open-ended streak wouldn't be a fair ranking. This endpoint only exists
+// once deployed on Cloudflare with the D1 + KV bindings set up; locally or on any other static
+// host these calls fail and the UI shows a "not available" note instead of breaking the app.
 
 const ENDPOINT = '/api/leaderboard';
 
-export async function fetchTopStreaks() {
+export async function fetchLeaderboard(mode) {
   try {
-    const res = await fetch(ENDPOINT);
+    const res = await fetch(`${ENDPOINT}?mode=${mode}`);
     if (!res.ok) return null;
     const data = await res.json();
     return data.entries;
@@ -16,12 +18,12 @@ export async function fetchTopStreaks() {
   }
 }
 
-export async function submitStreak(nickname, streak) {
+export async function submitToLeaderboard(mode, nickname, value) {
   try {
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname, streak }),
+      body: JSON.stringify({ mode, nickname, value }),
     });
     if (!res.ok) {
       const message = await res.text();

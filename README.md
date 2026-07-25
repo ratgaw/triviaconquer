@@ -4,13 +4,16 @@ A no-signup, no-subscription trivia web app with an Ancient Mediterranean theme.
 more categories and a difficulty, click through questions one at a time, chase a streak, and
 duel a friend to see who prevails.
 
-Plain HTML/CSS/JS — no build step, no framework. Questions come live from the free
-[Open Trivia Database](https://opentdb.com) API. The daily leaderboard uses a Cloudflare Worker
-+ KV (see below) — everything else works on any static host with zero setup.
+Plain HTML/CSS/JS on the frontend — no build step, no framework. Questions come from our own
+growing catalog (Cloudflare D1), fed daily from Open Trivia DB, the-trivia-api.com, and
+optionally Claude-generated questions (see below). The daily leaderboard uses Cloudflare Worker
++ KV.
 
-**Repo layout**: site files live in `public/` (this is what gets served). `worker.js` and
-`wrangler.jsonc` at the repo root are Cloudflare-specific and only matter for the leaderboard —
-any other static host just needs the contents of `public/`.
+**Repo layout**: site files live in `public/` (this is what gets served). `worker.js`,
+`ingestion.js`, `wrangler.jsonc`, and `migrations/` at the repo root are Cloudflare-specific —
+they run the catalog, the leaderboard, and the daily ingestion job. Without them deployed, the
+site still loads but can't fetch questions or show the leaderboard; there's no fallback to a
+different static host for this version, since the catalog itself only lives in D1.
 
 ## Run it locally
 
@@ -32,68 +35,142 @@ PowerShell, no dependencies) is included for local testing — run it from insid
 powershell -ExecutionPolicy Bypass -File public/serve.ps1
 ```
 
-`public/serve.ps1` is dev-only (already gitignored). Note: the leaderboard's `/api/leaderboard`
-endpoint only exists once deployed to Cloudflare (see below), so locally the leaderboard UI will
-show "not available" — that's expected, not a bug.
+`public/serve.ps1` is dev-only (already gitignored). Note: `/api/questions` and `/api/leaderboard`
+only exist once deployed to Cloudflare (see below) — locally you'll see "Couldn't find enough
+questions" on Start and "not available" on the leaderboard. That's expected, not a bug; there's
+no way to serve real questions without the deployed D1 catalog behind them.
 
 ## Features
 
-- **Grouped categories**: the ~24 raw Open Trivia DB categories are bucketed into 7 broader
-  picks (General Knowledge, Entertainment & Pop Culture, Science & Technology, History &
-  Politics, Geography & Nature, Arts & Mythology, Sports & Vehicles) — see `CATEGORY_GROUPS` in
-  `api.js` if you want to re-slice these.
+- **Grouped categories**: 8 broader picks (General Knowledge, Entertainment & Pop Culture,
+  Science & Technology, History & Politics, Geography & Nature, Mythology, Arts, Sports &
+  Vehicles — Mythology and Arts are separate groups, not combined) — see `CATEGORY_GROUPS` in
+  `public/category-groups.js` if you want to re-slice these. This file is shared by the browser
+  and the ingestion pipeline, so re-slicing categories only needs to happen in one place.
+- **A real, growing question catalog**: questions live in Cloudflare D1, not fetched live from a
+  third party on every round. A daily cron job (`ingestion.js`, triggered from `worker.js`) pulls
+  new questions from Open Trivia DB and the-trivia-api.com, optionally tops up thin
+  category/difficulty combos with Claude-generated questions, runs everything through a quality
+  pass, and only inserts genuinely new questions. See "Setting up the trivia catalog" below.
+- **No repeated questions**: the browser remembers every question ID you've been served
+  (`public/seen-questions.js`, persisted in `localStorage` — not just for one session) and asks
+  the catalog to exclude them next time. A question only repeats once you've actually exhausted
+  the unseen supply for that category/difficulty combination.
+- **Endless Mode**: an "♾️ Endless (no limit)" option alongside the usual 5/10/15/20 question
+  counts — keeps serving questions until you stop. When the unseen supply for your chosen
+  categories runs dry, you're shown a choice: end the run, continue anyway (allowing repeats), or
+  add another category to keep going without repeats.
 - **Streak + mythological ascension**: consecutive correct answers build a streak that climbs
   through a small pantheon (`celebration.js`) — the Muses, Hermes, Athena, Apollo, Heracles,
   Odysseus, the Minotaur, the Hydra, Poseidon, Ares, Hera, and finally Zeus at 24+ — each with
   its own confetti color, icon, and message, escalating in scale and (at the top tiers) a
   screen-shake or lightning-flash effect. Personal best streak is remembered locally
   (`localStorage`), independent of the daily leaderboard.
-- **Daily leaderboard**: nickname + streak, no login. Resets at midnight UTC. Requires the
-  Cloudflare backend below.
+- **Two daily leaderboards**: nickname, no login, both reset at midnight UTC.
+  - **Classic (20Q)** — best score out of a 20-question round specifically (other round lengths
+    are still fully playable, just not ranked — comparing a score out of 5 against a score out
+    of 20 wouldn't be a fair leaderboard).
+  - **Endless Streak** — highest streak reached in an Endless Mode run.
 - **Challenge a friend**: encodes the actual question set plus your score directly into a
   shareable URL (`challenge.js`) — no backend involved. Opening the link shows a head-to-head
   comparison after they play the identical questions.
 
-## Setting up the daily leaderboard (Cloudflare Worker + KV)
+## Setting up the trivia catalog and leaderboard (Cloudflare Worker + D1 + KV)
 
 Cloudflare has unified Pages into its "Workers" product. A Git-connected Worker project deploys
 via Wrangler using `wrangler.jsonc` (repo root) — it defines `public/` as the static assets
-directory and `worker.js` as the script that handles anything not matched by a static file,
-which in this app means just `/api/leaderboard`. This is different from the older "Pages
+directory and `worker.js` as the script that handles anything not matched by a static file:
+`/api/questions`, `/api/leaderboard`, and `/api/ingest`. This is different from the older "Pages
 Functions" (`functions/api/*.js`) convention — that approach doesn't apply to new Git-connected
 Worker projects, which is why this repo uses `worker.js` + `wrangler.jsonc` instead.
 
-The leaderboard code is fully written and degrades gracefully without it — the rest of the site
-works either way.
+Unlike the leaderboard (which degrades gracefully without it), **the question catalog is
+required** — without D1 set up, the site has no questions to serve at all.
 
-1. In the Cloudflare dashboard: **Workers & Pages → Create → Import a repository**, select this
-   GitHub repo. Leave **Build command** empty and **Deploy command** as `npx wrangler deploy` —
-   Wrangler reads `wrangler.jsonc` automatically, no extra build config needed.
-2. `wrangler.jsonc` already references a KV binding named `LEADERBOARD_KV` pointed at a specific
-   namespace ID. If you're using a different KV namespace, update the `id` field in
-   `wrangler.jsonc` to match yours (Cloudflare dashboard → Storage & Databases → KV → your
-   namespace → copy its ID).
-3. Deploy (or push to the connected branch to trigger a redeploy).
+### 1. Create the D1 database
 
-**Once you've done this, let me know and I'll help verify it end-to-end** (submit a score,
-confirm it shows up, confirm it's gone the next UTC day).
+Cloudflare dashboard → **Storage & Databases → D1 → Create database** → name it
+`triviaconquer-questions` (or anything — just update the name below to match). Copy its
+**database ID**.
 
-Known limitations, by design for a no-login casual leaderboard:
-- Streaks are self-reported by the client — there's no server-side verification that a submitted
-  streak was actually earned in-game. Bounded to a max of 200 to block obviously fake values, but
-  a determined user could still post a plausible fake score. Fine for a fun/casual leaderboard;
-  not suitable if this ever needs to be tamper-proof.
+In `wrangler.jsonc`, replace `REPLACE_WITH_YOUR_D1_DATABASE_ID` with that ID.
+
+### 2. Apply the schema and keep it applied on every deploy
+
+`migrations/0001_init.sql` defines the `questions` and `ingestion_log` tables. Migrations need to
+run via Wrangler, which requires Node — this machine didn't have it, so rather than run it once
+locally, the cleanest fix is to make **every deploy** apply pending migrations first. In the
+Cloudflare dashboard, on this Worker project → **Settings** → change the **Deploy command** from
+`npx wrangler deploy` to:
+
+```
+npx wrangler d1 migrations apply DB --remote && npx wrangler deploy
+```
+
+(`DB` matches the binding name in `wrangler.jsonc`.) This is idempotent — already-applied
+migrations are skipped — so it's safe to leave in place permanently.
+
+### 3. Set up the KV leaderboard binding (if not already done)
+
+Same as before: **Settings → Domains & Routes** (or wherever KV bindings live in your dashboard
+version) → bind an existing or new KV namespace to the variable name `LEADERBOARD_KV`.
+
+### 4. (Optional) Add an Anthropic API key for LLM-generated questions and quality review
+
+Without this, the daily ingestion job still runs — it just pulls from Open Trivia DB and
+the-trivia-api.com and falls back to rule-based cleanup (whitespace/duplicate-answer checks)
+instead of an LLM reviewing every question for typos and awkward phrasing.
+
+With a key, ingestion additionally (a) generates fresh questions for thin category/difficulty
+combos via Claude, and (b) runs every incoming question — from all three sources — through an
+LLM proofreading pass that fixes typos/grammar and rejects anything factually wrong, ambiguous,
+or a near-duplicate within its batch.
+
+To enable it: create an API key at [console.anthropic.com](https://console.anthropic.com), then
+in the Cloudflare dashboard → this Worker project → **Settings → Variables and Secrets** → add a
+secret named `ANTHROPIC_API_KEY`. This is a paid API (Claude Haiku, priced per token) — the daily
+job is bounded (roughly 8 groups × 3 difficulties × up to 15 questions/day), so cost stays small,
+but it is an ongoing cost tied to your Anthropic billing, not free like the rest of this stack.
+
+### 5. (Optional) Set up manual ingestion testing
+
+The daily job normally runs from the cron trigger already defined in `wrangler.jsonc`
+(`0 6 * * *`, i.e. 6am UTC) — but waiting a full day to see if it worked isn't practical for
+testing. Add a secret named `INGEST_SECRET` (any random string you choose) in **Settings →
+Variables and Secrets**, then trigger a run manually any time with:
+
+```bash
+curl -X POST "https://<your-worker-url>/api/ingest?key=<your-INGEST_SECRET-value>"
+```
+
+It returns a JSON summary (`pulled`, `added`, `rejectedDuplicate`, `rejectedQuality`) so you can
+confirm it's actually adding questions before waiting on the schedule.
+
+**Once you've set up D1 (and optionally the LLM key), let me know and I'll help verify it
+end-to-end** — trigger an ingestion run, confirm questions show up, play a round, submit to both
+leaderboards, confirm entries appear and are gone the next UTC day.
+
+Known limitations, by design for a casual, no-login, free-tier-friendly setup:
+- Duplicate detection is an exact normalized-text hash match — it catches identical questions
+  (including the repeat you noticed) but won't catch two differently-worded questions asking the
+  same thing. Genuine semantic dedup would need embeddings and similarity search, which is more
+  infrastructure than this warrants right now.
+- The LLM quality pass (when enabled) meaningfully reduces typos/awkward phrasing/factual errors,
+  but doesn't guarantee perfection — it's a review pass, not a formal fact-checker.
+- Leaderboard values are self-reported by the client with only basic bounds-checking
+  (Classic capped at 20, Endless capped at a large sanity ceiling) — a determined user could still
+  post a plausible fake score. Fine for a fun/casual leaderboard; not tamper-proof.
 - The profanity filter (`profanity-filter.js`, checked both client- and server-side) is a
   word-list match — it blocks the obvious cases, not every possible evasion.
-- Two submissions at the exact same instant could race and one could be dropped. Acceptable for
-  a casual daily board; not appropriate if exact counts ever matter.
+- Two leaderboard submissions at the exact same instant could race and one could be dropped.
+  Acceptable for a casual daily board; not appropriate if exact counts ever matter.
 
 ## Deploying
 
-The contents of `public/` are a plain static site — any host works (Netlify, Vercel, GitHub
-Pages, Cloudflare) if you don't need the leaderboard. The leaderboard specifically needs the
-Cloudflare Worker + KV setup described above, since `worker.js` and `wrangler.jsonc` are
-Cloudflare-specific.
+This version is Cloudflare-specific: the question catalog lives in D1 and is served by
+`worker.js`, so there's no meaningful way to run this on a different static host anymore (unlike
+earlier versions, where OTDB was queried directly from the browser). Deploy via Cloudflare
+Workers as described above.
 
 ## Turning it into an "app"
 
@@ -134,8 +211,11 @@ by [Delapouite](https://delapouite.com). Keep this credit if you redistribute th
 
 ## Customizing
 
-- **Category groups**: `CATEGORY_GROUPS` in `public/api.js`.
+- **Category groups**: `CATEGORY_GROUPS` in `public/category-groups.js` — shared by the browser
+  and the ingestion pipeline (`ingestion.js`), so re-slicing categories only needs to happen once.
 - **Question count per round**: `amounts` array in `public/app.js` (`renderSetup`).
+- **How many new questions ingested per group per day**: `DAILY_TARGET_PER_GROUP` in
+  `ingestion.js`.
 - **Colors/branding**: CSS variables at the top of `public/styles.css`.
 - **Profanity blocklist**: `BLOCKLIST` in `public/profanity-filter.js` — a single file imported
   by both the browser (`public/app.js`) and the Worker (`worker.js`), so there's nothing to keep

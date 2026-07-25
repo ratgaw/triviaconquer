@@ -1,6 +1,6 @@
 // Caches only the app shell (HTML/CSS/JS/icons) so the site launches instantly when installed.
 // Trivia questions always come fresh from the network — they are not cached.
-const CACHE_NAME = 'triviaconquer-shell-v4';
+const CACHE_NAME = 'triviaconquer-shell-v5';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -8,6 +8,8 @@ const SHELL_FILES = [
   './styles.css',
   './app.js',
   './api.js',
+  './category-groups.js',
+  './seen-questions.js',
   './celebration.js',
   './challenge.js',
   './leaderboard.js',
