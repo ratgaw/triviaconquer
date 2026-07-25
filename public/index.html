@@ -3,32 +3,66 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>QuickTrivia — Pick a Category, Test Your Knowledge</title>
-<meta name="description" content="Free, no-signup trivia. Pick your categories and difficulty, then click through questions one at a time." />
-<meta name="theme-color" content="#5b3df5" />
+<title>Trivia Conquer — Clash for Knowledge</title>
+<meta name="description" content="Free, no-signup trivia. Choose your battlegrounds, pick a difficulty, and clash head-to-head to see who reigns supreme." />
+<meta name="theme-color" content="#a8791f" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+<div class="bg-blobs" aria-hidden="true">
+  <span class="bg-blob bg-blob--1"></span>
+  <span class="bg-blob bg-blob--2"></span>
+  <span class="bg-blob bg-blob--3"></span>
+</div>
+<div class="bg-emoji" aria-hidden="true">
+  <span class="bg-emoji-item" style="--x:6%; --y:14%; --delay:0s;">🏛️</span>
+  <span class="bg-emoji-item" style="--x:88%; --y:10%; --delay:1.2s;">⚔️</span>
+  <span class="bg-emoji-item" style="--x:10%; --y:78%; --delay:2.1s;">🛡️</span>
+  <span class="bg-emoji-item" style="--x:90%; --y:82%; --delay:0.6s;">🏺</span>
+  <span class="bg-emoji-item" style="--x:50%; --y:92%; --delay:1.6s;">📜</span>
+</div>
+
 <header class="site-header">
   <div class="brand">
     <img src="icons/icon.svg" alt="" class="brand-icon" />
-    <span class="brand-name">QuickTrivia</span>
+    <span class="brand-name">Trivia Conquer</span>
   </div>
-  <p class="tagline">Pick a category. Pick a difficulty. Start playing.</p>
+  <p class="tagline">Choose your battlegrounds. Clash for knowledge. Claim your laurels.</p>
+  <div class="key-pattern" aria-hidden="true"></div>
 </header>
 
-<!-- AD SLOT: top banner. Replace this div with your AdSense <ins> unit once approved. -->
-<div class="ad-slot ad-slot--banner" id="ad-top" aria-hidden="true">Ad space</div>
+<!-- AD SLOT: top banner. Sample creative shown for layout preview — replace the contents of
+     this div with your AdSense <ins> unit once approved (see README). -->
+<div class="ad-slot" id="ad-top">
+  <span class="ad-slot-label">Advertisement</span>
+  <div class="ad-slot-mock">
+    <span class="ad-slot-mock-badge">Sample Ad</span>
+    <div class="ad-slot-mock-art" aria-hidden="true">🖼️</div>
+    <div class="ad-slot-mock-lines"><span></span><span></span></div>
+  </div>
+</div>
 
 <main id="app" class="app"></main>
 
-<!-- AD SLOT: footer banner. Replace this div with your AdSense <ins> unit once approved. -->
-<div class="ad-slot ad-slot--banner" id="ad-bottom" aria-hidden="true">Ad space</div>
+<!-- AD SLOT: footer banner. Sample creative shown for layout preview — replace the contents of
+     this div with your AdSense <ins> unit once approved (see README). -->
+<div class="ad-slot" id="ad-bottom">
+  <span class="ad-slot-label">Advertisement</span>
+  <div class="ad-slot-mock">
+    <span class="ad-slot-mock-badge">Sample Ad</span>
+    <div class="ad-slot-mock-art" aria-hidden="true">🖼️</div>
+    <div class="ad-slot-mock-lines"><span></span><span></span></div>
+  </div>
+</div>
 
 <footer class="site-footer">
+  <div class="key-pattern" aria-hidden="true"></div>
   <p>Trivia questions courtesy of the <a href="https://opentdb.com" target="_blank" rel="noopener">Open Trivia Database</a>. · <a href="privacy.html">Privacy Policy</a></p>
 </footer>
 

@@ -2,13 +2,13 @@
 // No external animation library — a handful of absolutely-positioned divs animated by CSS
 // (see .confetti-piece / .streak-toast in styles.css), removed once their animation finishes.
 
-const PALETTE = ['#5b3df5', '#ff6b6b', '#ffd166', '#06d6a0', '#4cc9f0', '#f72585'];
+const PALETTE = ['#a8791f', '#b23a2e', '#2f5d73', '#4c7a3d', '#d4a94a', '#8a5a2b'];
 
 function tierFor(streak) {
-  if (streak >= 10) return { level: 4, label: `UNSTOPPABLE! 🔥 ${streak} streak`, particles: 44, fontRem: 2.4 };
-  if (streak >= 5) return { level: 3, label: `On fire! 🔥 ${streak} streak`, particles: 30, fontRem: 1.9 };
-  if (streak >= 3) return { level: 2, label: `${streak} in a row! 🔥`, particles: 18, fontRem: 1.5 };
-  return { level: 1, label: streak === 1 ? 'Correct!' : `${streak} streak`, particles: 8, fontRem: 1.15 };
+  if (streak >= 10) return { level: 4, label: `⚔️ UNSTOPPABLE CONQUEST! ${streak} streak`, particles: 44, fontRem: 2.4 };
+  if (streak >= 5) return { level: 3, label: `🔥 On the march! ${streak} streak`, particles: 30, fontRem: 1.9 };
+  if (streak >= 3) return { level: 2, label: `${streak} in a row — press the advantage!`, particles: 18, fontRem: 1.5 };
+  return { level: 1, label: streak === 1 ? 'Victory!' : `${streak} streak`, particles: 8, fontRem: 1.15 };
 }
 
 function spawnConfetti(count, level) {

@@ -6,8 +6,8 @@ import { isValidNickname, sanitizeNickname } from './profanity-filter.js';
 
 const root = document.getElementById('app');
 
-const NICKNAME_KEY = 'quicktrivia:nickname';
-const BEST_STREAK_KEY = 'quicktrivia:bestStreak';
+const NICKNAME_KEY = 'triviaconquer:nickname';
+const BEST_STREAK_KEY = 'triviaconquer:bestStreak';
 
 const state = {
   view: 'setup', // 'setup' | 'challenge-intro' | 'playing' | 'summary' | 'leaderboard' | 'loading' | 'error'
@@ -57,7 +57,7 @@ function renderLoading() {
 
 function renderError() {
   root.innerHTML = `
-    <div class="panel error-panel">
+    <div class="panel panel-animate error-panel">
       <p>${state.errorMessage}</p>
       <button class="btn btn-primary" id="back-to-setup">Back to setup</button>
     </div>
@@ -97,7 +97,7 @@ function renderSetup() {
   const amountOptions = amounts.map((a) => `<option value="${a}" ${state.amount === a ? 'selected' : ''}>${a} questions</option>`).join('');
 
   root.innerHTML = `
-    <section class="panel">
+    <section class="panel panel-animate">
       <h2>1. Choose one or more categories</h2>
       <div class="chip-grid">${categoryChips}</div>
 
@@ -108,9 +108,9 @@ function renderSetup() {
       <select id="amount-select" class="select">${amountOptions}</select>
 
       <button type="button" id="start-btn" class="btn btn-primary btn-large" ${state.selectedGroups.size === 0 ? 'disabled' : ''}>
-        Start Trivia
+        Enter the Arena
       </button>
-      <button type="button" id="view-leaderboard-btn" class="btn btn-secondary btn-large">🏆 Today's Leaderboard</button>
+      <button type="button" id="view-leaderboard-btn" class="btn btn-secondary btn-large">🏆 Hall of Champions</button>
     </section>
   `;
 
@@ -184,11 +184,11 @@ function beginRound(questions, opponent) {
 function renderChallengeIntro() {
   const c = state.incomingChallenge;
   root.innerHTML = `
-    <section class="panel challenge-panel">
-      <h2>🎯 ${escapeHtml(c.fromName)} challenges you!</h2>
-      <p class="challenge-stats">They scored <strong>${c.fromScore}/${c.questions.length}</strong> with a streak of <strong>${c.fromStreak}</strong>. Think you can beat it?</p>
-      <button type="button" id="accept-challenge-btn" class="btn btn-primary btn-large">Accept Challenge</button>
-      <button type="button" id="decline-challenge-btn" class="btn btn-secondary btn-large">Play my own round instead</button>
+    <section class="panel panel-animate challenge-panel">
+      <h2>⚔️ ${escapeHtml(c.fromName)} has thrown down the gauntlet!</h2>
+      <p class="challenge-stats">They scored <strong>${c.fromScore}/${c.questions.length}</strong> with a streak of <strong>${c.fromStreak}</strong>. Enter the arena and see who prevails.</p>
+      <button type="button" id="accept-challenge-btn" class="btn btn-primary btn-large">Accept the Duel</button>
+      <button type="button" id="decline-challenge-btn" class="btn btn-secondary btn-large">Choose my own battleground instead</button>
     </section>
   `;
 
@@ -232,7 +232,7 @@ function renderPlaying() {
     .join('');
 
   root.innerHTML = `
-    <section class="panel play-panel">
+    <section class="panel panel-animate play-panel">
       <div class="progress-row">
         <div class="progress-track"><div class="progress-fill" style="width:${progressPct}%"></div></div>
         <span class="progress-label">Question ${state.currentIndex + 1} of ${state.questions.length}</span>
@@ -297,11 +297,15 @@ function renderSummary() {
   const opponentBlock = state.opponent
     ? (() => {
         const result =
-          state.score > state.opponent.score ? '🎉 You win!' : state.score < state.opponent.score ? 'They win this one.' : "It's a tie!";
+          state.score > state.opponent.score
+            ? '🏆 Victory is yours!'
+            : state.score < state.opponent.score
+              ? `Defeat — this round goes to ${escapeHtml(state.opponent.name)}.`
+              : '⚔️ A hard-fought draw!';
         return `
         <div class="opponent-compare">
           <div class="opponent-col"><span class="opponent-label">You</span><span class="opponent-score">${state.score}/${total}</span><span class="opponent-streak">streak ${state.longestStreakThisRound}</span></div>
-          <div class="opponent-vs">vs</div>
+          <div class="opponent-vs">⚔️</div>
           <div class="opponent-col"><span class="opponent-label">${escapeHtml(state.opponent.name)}</span><span class="opponent-score">${state.opponent.score}/${total}</span><span class="opponent-streak">streak ${state.opponent.streak}</span></div>
         </div>
         <p class="opponent-result">${result}</p>
@@ -310,27 +314,27 @@ function renderSummary() {
     : '';
 
   root.innerHTML = `
-    <section class="panel summary-panel">
-      <h2>Round complete!</h2>
+    <section class="panel panel-animate summary-panel">
+      <h2>The Dust Settles</h2>
       <p class="summary-score">${state.score} / ${total} <span class="summary-pct">(${pct}%)</span></p>
-      <p class="summary-streak">Best streak this round: <strong>${state.longestStreakThisRound}</strong>${isNewBest ? ' — new personal best! 🎉' : ''}</p>
+      <p class="summary-streak">Best streak this round: <strong>${state.longestStreakThisRound}</strong>${isNewBest ? ' — a new personal record! 🏆' : ''}</p>
 
       ${opponentBlock}
 
       <div class="summary-section">
-        <h3>🏆 Submit to Today's Leaderboard</h3>
+        <h3>🏆 Enter the Hall of Champions</h3>
         <div id="leaderboard-submit-area"></div>
       </div>
 
       <div class="summary-section">
-        <h3>🎯 Challenge a Friend</h3>
-        <button type="button" id="challenge-btn" class="btn btn-secondary btn-large">Send Challenge Link</button>
+        <h3>⚔️ Duel a Friend</h3>
+        <button type="button" id="challenge-btn" class="btn btn-secondary btn-large">Send Duel Link</button>
         <p id="share-status" class="share-status">${state.shareStatus}</p>
       </div>
 
       <div class="summary-actions">
-        <button type="button" id="replay-btn" class="btn btn-primary btn-large">Play Again</button>
-        <button type="button" id="new-settings-btn" class="btn btn-secondary btn-large">Change Categories</button>
+        <button type="button" id="replay-btn" class="btn btn-primary btn-large">Fight Again</button>
+        <button type="button" id="new-settings-btn" class="btn btn-secondary btn-large">Choose New Battlegrounds</button>
       </div>
     </section>
   `;
@@ -359,19 +363,19 @@ function renderLeaderboardSubmitArea() {
   if (!area) return;
 
   if (state.longestStreakThisRound === 0) {
-    area.innerHTML = `<p class="muted">Get at least a 1-streak to submit a score.</p>`;
+    area.innerHTML = `<p class="muted">Land at least a 1-streak to earn your place in the Hall.</p>`;
     return;
   }
 
   if (state.leaderboardSubmitted) {
-    area.innerHTML = `<p class="muted">✅ Submitted! Check <button type="button" id="jump-to-leaderboard" class="link-btn">today's leaderboard</button>.</p>`;
+    area.innerHTML = `<p class="muted">✅ Inscribed! Check the <button type="button" id="jump-to-leaderboard" class="link-btn">Hall of Champions</button>.</p>`;
     document.getElementById('jump-to-leaderboard').addEventListener('click', () => openLeaderboard('summary'));
     return;
   }
 
   area.innerHTML = `
     <div class="nickname-row">
-      <input type="text" id="nickname-input" class="text-input" placeholder="Nickname (max 16 chars)" maxlength="16" value="${escapeHtml(state.nickname)}" />
+      <input type="text" id="nickname-input" class="text-input" placeholder="Your name, champion (max 16 chars)" maxlength="16" value="${escapeHtml(state.nickname)}" />
       <button type="button" id="submit-leaderboard-btn" class="btn btn-primary">Submit</button>
     </div>
     <p id="leaderboard-submit-message" class="submit-message"></p>
@@ -414,7 +418,7 @@ async function onSubmitLeaderboard() {
 async function onChallengeClick() {
   const btn = document.getElementById('challenge-btn');
   btn.disabled = true;
-  state.shareStatus = 'Preparing your challenge link…';
+  state.shareStatus = 'Forging your duel link…';
   document.getElementById('share-status').textContent = state.shareStatus;
 
   try {
@@ -422,7 +426,7 @@ async function onChallengeClick() {
     const challengeQuestions = await fetchQuestions({ groupIds, difficulty: state.difficulty, amount: Math.min(state.amount, 10) });
 
     if (challengeQuestions.length === 0) {
-      state.shareStatus = "Couldn't prepare a challenge right now — try again.";
+      state.shareStatus = "Couldn't forge a duel right now — try again.";
       document.getElementById('share-status').textContent = state.shareStatus;
       btn.disabled = false;
       return;
@@ -430,15 +434,15 @@ async function onChallengeClick() {
 
     const url = buildChallengeUrl({
       questions: challengeQuestions,
-      fromName: state.nickname || 'A friend',
+      fromName: state.nickname || 'A challenger',
       score: state.score,
       streak: state.longestStreakThisRound,
     });
 
-    const result = await shareChallenge(url, `Can you beat my trivia streak of ${state.longestStreakThisRound}?`);
-    state.shareStatus = result === 'copied' ? 'Link copied to clipboard!' : result === 'shared' ? 'Sent!' : '';
+    const result = await shareChallenge(url, `Can you beat my trivia streak of ${state.longestStreakThisRound}? Prove it.`);
+    state.shareStatus = result === 'copied' ? 'Duel link copied to clipboard!' : result === 'shared' ? 'Gauntlet thrown!' : '';
   } catch {
-    state.shareStatus = 'Something went wrong preparing the link.';
+    state.shareStatus = 'Something went wrong forging the link.';
   }
 
   document.getElementById('share-status').textContent = state.shareStatus;
@@ -469,11 +473,11 @@ async function loadLeaderboard() {
 function renderLeaderboard() {
   let body;
   if (state.leaderboardStatus === 'loading') {
-    body = `<div class="loading"><div class="spinner"></div><p>Loading today's leaderboard…</p></div>`;
+    body = `<div class="loading"><div class="spinner"></div><p>Consulting the scrolls…</p></div>`;
   } else if (state.leaderboardStatus === 'unavailable') {
-    body = `<p class="muted">The leaderboard isn't available right now — this feature requires the site to be deployed on Cloudflare Pages with the leaderboard KV binding set up (see README).</p>`;
+    body = `<p class="muted">The Hall of Champions isn't available right now — this feature requires the site to be deployed on Cloudflare with the leaderboard KV binding set up (see README).</p>`;
   } else if (!state.leaderboardEntries || state.leaderboardEntries.length === 0) {
-    body = `<p class="muted">No scores submitted yet today. Be the first!</p>`;
+    body = `<p class="muted">No champions crowned yet today. Be the first to claim the laurel!</p>`;
   } else {
     const rows = state.leaderboardEntries
       .map(
@@ -489,8 +493,8 @@ function renderLeaderboard() {
   }
 
   root.innerHTML = `
-    <section class="panel">
-      <h2>🏆 Today's Leaderboard</h2>
+    <section class="panel panel-animate">
+      <h2>🏆 Hall of Champions</h2>
       <p class="muted small">Resets daily at midnight UTC.</p>
       ${body}
       <button type="button" id="leaderboard-back-btn" class="btn btn-primary btn-large">Back</button>

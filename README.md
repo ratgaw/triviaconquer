@@ -1,7 +1,8 @@
-# QuickTrivia
+# Trivia Conquer
 
-A no-signup, no-subscription trivia web app. Pick one or more categories and a difficulty,
-click through questions one at a time, chase a streak, and challenge a friend to beat your score.
+A no-signup, no-subscription trivia web app with an Ancient Mediterranean theme. Pick one or
+more categories and a difficulty, click through questions one at a time, chase a streak, and
+duel a friend to see who prevails.
 
 Plain HTML/CSS/JS — no build step, no framework. Questions come live from the free
 [Open Trivia Database](https://opentdb.com) API. The daily leaderboard uses a Cloudflare Worker

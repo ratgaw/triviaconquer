@@ -68,7 +68,7 @@ export function parseChallengeFromUrl() {
 export async function shareChallenge(url, text) {
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'QuickTrivia Challenge', text, url });
+      await navigator.share({ title: 'Trivia Conquer Duel', text, url });
       return 'shared';
     } catch {
       return 'cancelled';

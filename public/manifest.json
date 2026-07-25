@@ -1,12 +1,12 @@
 {
-  "name": "QuickTrivia",
-  "short_name": "QuickTrivia",
-  "description": "Pick categories and difficulty, then click through trivia questions one at a time.",
+  "name": "Trivia Conquer",
+  "short_name": "TriviaConquer",
+  "description": "Choose your battlegrounds, pick a difficulty, and clash head-to-head to see who reigns supreme.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f4f2ff",
-  "theme_color": "#5b3df5",
+  "background_color": "#f2e8d5",
+  "theme_color": "#a8791f",
   "icons": [
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
