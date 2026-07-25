@@ -52,6 +52,11 @@ no way to serve real questions without the deployed D1 catalog behind them.
   new questions from Open Trivia DB and the-trivia-api.com, optionally tops up thin
   category/difficulty combos with Claude-generated questions, runs everything through a quality
   pass, and only inserts genuinely new questions. See "Setting up the trivia catalog" below.
+- **"Did you know?" explanations**: when a question was reviewed by the LLM quality pass (i.e.
+  `ANTHROPIC_API_KEY` is configured), a short one/two-sentence explanation is generated alongside
+  it and stored with the question. It appears below the answers once you've picked one. Questions
+  ingested without an LLM key (or ingested before this feature existed) simply have no
+  explanation, and the box doesn't render — nothing to configure.
 - **No repeated questions**: the browser remembers every question ID you've been served
   (`public/seen-questions.js`, persisted in `localStorage` — not just for one session) and asks
   the catalog to exclude them next time. A question only repeats once you've actually exhausted

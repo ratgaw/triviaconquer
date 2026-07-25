@@ -55,6 +55,7 @@ async function pullFromOTDB(group, difficulty, amount) {
       question: decodeHtmlEntities(q.question),
       correctAnswer: decodeHtmlEntities(q.correct_answer),
       incorrectAnswers: q.incorrect_answers.map(decodeHtmlEntities),
+      explanation: '',
       source: 'opentdb',
     }));
   } catch {
@@ -81,6 +82,7 @@ async function pullFromTriviaApi(group, difficulty, amount) {
       question: q.question.text,
       correctAnswer: q.correctAnswer,
       incorrectAnswers: q.incorrectAnswers,
+      explanation: '',
       source: 'trivia-api',
     }));
   } catch {
@@ -135,6 +137,7 @@ questions.`;
         question: q.question,
         correctAnswer: q.correctAnswer,
         incorrectAnswers: q.incorrectAnswers.slice(0, 3),
+        explanation: '',
         source: 'llm',
       }));
   } catch {
@@ -154,14 +157,16 @@ function ruleBasedClean(q) {
 async function reviewBatchWithLLM(batch, env) {
   const prompt = `Review these trivia questions for typos, grammatical errors, or awkward phrasing, and correct them in place. Also set "reject": true for any question that is factually wrong, ambiguous, has more than one plausible correct answer, or is a near-duplicate of another question in this same batch.
 
+For every question you don't reject, also write a one or two sentence "explanation" — extra context or a fun fact about the answer, the kind of thing that makes someone say "huh, interesting" after seeing the correct answer. Keep it factual and concise, under 200 characters.
+
 Input:
 ${JSON.stringify(batch.map((q, i) => ({ index: i, question: q.question, correctAnswer: q.correctAnswer, incorrectAnswers: q.incorrectAnswers })))}
 
 Return ONLY a JSON array with exactly one entry per input item, same order, in this exact shape:
-[{"index": 0, "reject": false, "question": "corrected text", "correctAnswer": "...", "incorrectAnswers": ["...", "...", "..."]}]`;
+[{"index": 0, "reject": false, "question": "corrected text", "correctAnswer": "...", "incorrectAnswers": ["...", "...", "..."], "explanation": "..."}]`;
 
   try {
-    const text = await callClaude(prompt, 4096, env);
+    const text = await callClaude(prompt, 6144, env);
     if (!text) return batch.map(ruleBasedClean).filter(Boolean);
 
     const reviewed = JSON.parse(extractJsonArray(text));
@@ -170,7 +175,13 @@ Return ONLY a JSON array with exactly one entry per input item, same order, in t
       if (!r || r.reject) continue;
       const original = batch[r.index];
       if (!original || !r.question || !r.correctAnswer || !Array.isArray(r.incorrectAnswers)) continue;
-      out.push({ ...original, question: r.question, correctAnswer: r.correctAnswer, incorrectAnswers: r.incorrectAnswers.slice(0, 3) });
+      out.push({
+        ...original,
+        question: r.question,
+        correctAnswer: r.correctAnswer,
+        incorrectAnswers: r.incorrectAnswers.slice(0, 3),
+        explanation: typeof r.explanation === 'string' ? r.explanation.slice(0, 240) : '',
+      });
     }
     return out;
   } catch {
@@ -200,10 +211,21 @@ async function insertQuestions(cleaned, env, stats) {
     }
     try {
       await env.DB.prepare(
-        `INSERT INTO questions (group_id, difficulty, type, question, correct_answer, incorrect_answers, question_hash, source, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO questions (group_id, difficulty, type, question, correct_answer, incorrect_answers, explanation, question_hash, source, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-        .bind(q.groupId, q.difficulty, q.type, q.question, q.correctAnswer, JSON.stringify(q.incorrectAnswers), hash, q.source, Date.now())
+        .bind(
+          q.groupId,
+          q.difficulty,
+          q.type,
+          q.question,
+          q.correctAnswer,
+          JSON.stringify(q.incorrectAnswers),
+          q.explanation || '',
+          hash,
+          q.source,
+          Date.now()
+        )
         .run();
       stats.added++;
     } catch {

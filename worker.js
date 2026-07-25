@@ -91,7 +91,7 @@ async function handleQuestionsGet(url, env) {
   }
 
   const bindings = [...groupIds];
-  let sql = `SELECT id, group_id, difficulty, type, question, correct_answer, incorrect_answers FROM questions WHERE group_id IN (${groupIds.map(() => '?').join(',')})`;
+  let sql = `SELECT id, group_id, difficulty, type, question, correct_answer, incorrect_answers, explanation FROM questions WHERE group_id IN (${groupIds.map(() => '?').join(',')})`;
 
   if (difficulty !== 'any') {
     sql += ' AND difficulty = ?';
@@ -114,6 +114,7 @@ async function handleQuestionsGet(url, env) {
     question: row.question,
     correctAnswer: row.correct_answer,
     incorrectAnswers: JSON.parse(row.incorrect_answers),
+    explanation: row.explanation || '',
   }));
 
   return Response.json({ questions, exhausted: questions.length < amount });

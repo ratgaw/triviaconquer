@@ -468,6 +468,8 @@ function renderPlaying() {
 
       <div class="answers ${q.type === 'boolean' ? 'answers--boolean' : ''}">${answerButtons}</div>
 
+      ${revealed && q.explanation ? `<div class="explanation-box"><span class="explanation-label">📜 Did you know?</span><p>${escapeHtml(q.explanation)}</p></div>` : ''}
+
       ${revealed ? '<button type="button" id="next-btn" class="btn btn-primary btn-large">Next Question</button>' : ''}
     </section>
   `;

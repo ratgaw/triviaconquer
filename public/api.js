@@ -56,6 +56,7 @@ export async function fetchQuestions({ groupIds, difficulty, amount, allowRepeat
     question: q.question,
     correctAnswer: q.correctAnswer,
     answers: shuffle([q.correctAnswer, ...q.incorrectAnswers]),
+    explanation: q.explanation || '',
   }));
 
   if (!allowRepeats) markSeen(questions.map((q) => q.id));

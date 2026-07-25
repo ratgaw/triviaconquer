@@ -473,6 +473,31 @@ body {
   grid-template-columns: 1fr 1fr;
 }
 
+.explanation-box {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  animation: panel-enter 0.3s ease both;
+}
+
+.explanation-label {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.explanation-box p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
 .answer-btn {
   text-align: left;
   padding: 14px 16px;

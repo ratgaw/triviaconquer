@@ -25,6 +25,7 @@ export function buildChallengeUrl({ questions, fromName, score, streak }) {
     q: q.question,
     a: q.answers,
     x: q.correctAnswer,
+    e: q.explanation || '',
   }));
 
   const payload = { v: 1, n: (fromName || 'A friend').slice(0, 16), s: score, st: streak, qs: compact };
@@ -58,6 +59,7 @@ export function parseChallengeFromUrl() {
         question: q.q,
         answers: q.a,
         correctAnswer: q.x,
+        explanation: q.e || '',
       })),
     };
   } catch {
