@@ -1,6 +1,6 @@
 // Caches only the app shell (HTML/CSS/JS/icons) so the site launches instantly when installed.
 // Trivia questions always come fresh from the network — they are not cached.
-const CACHE_NAME = 'triviaconquer-shell-v3';
+const CACHE_NAME = 'triviaconquer-shell-v4';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -14,6 +14,18 @@ const SHELL_FILES = [
   './profanity-filter.js',
   './manifest.json',
   './icons/icon.svg',
+  './icons/gods/muses.svg',
+  './icons/gods/hermes.svg',
+  './icons/gods/athena.svg',
+  './icons/gods/apollo.svg',
+  './icons/gods/heracles.svg',
+  './icons/gods/odysseus.svg',
+  './icons/gods/minotaur.svg',
+  './icons/gods/hydra.svg',
+  './icons/gods/poseidon.svg',
+  './icons/gods/ares.svg',
+  './icons/gods/hera.svg',
+  './icons/gods/zeus.svg',
 ];
 
 self.addEventListener('install', (event) => {

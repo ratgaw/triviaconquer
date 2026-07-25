@@ -1,5 +1,5 @@
 import { CATEGORY_GROUPS, fetchQuestions } from './api.js';
-import { celebrate } from './celebration.js';
+import { celebrate, tierFor, iconUrl } from './celebration.js';
 import { buildChallengeUrl, parseChallengeFromUrl, shareChallenge } from './challenge.js';
 import { fetchTopStreaks, submitStreak } from './leaderboard.js';
 import { isValidNickname, sanitizeNickname } from './profanity-filter.js';
@@ -231,6 +231,12 @@ function renderPlaying() {
     })
     .join('');
 
+  const streakTier = state.streak > 0 ? tierFor(state.streak) : null;
+  const streakBadgeStyle = streakTier ? ` style="--tier-color:${streakTier.color}"` : '';
+  const streakBadgeIcon = streakTier
+    ? `<img class="streak-badge-icon" src="${iconUrl(streakTier)}" alt="" />`
+    : '🔥';
+
   root.innerHTML = `
     <section class="panel panel-animate play-panel">
       <div class="progress-row">
@@ -241,7 +247,7 @@ function renderPlaying() {
       <div class="meta-row">
         <span class="badge">${q.category}</span>
         <span class="badge badge--${q.difficulty}">${q.difficulty}</span>
-        <span class="streak-badge ${state.streak > 0 ? 'streak-badge--active' : ''}">🔥 ${state.streak}</span>
+        <span class="streak-badge ${streakTier ? 'streak-badge--active' : ''}"${streakBadgeStyle}>${streakBadgeIcon} ${state.streak}</span>
         <span class="score">Score: ${state.score}</span>
       </div>
 

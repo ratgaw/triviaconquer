@@ -42,9 +42,12 @@ show "not available" — that's expected, not a bug.
   picks (General Knowledge, Entertainment & Pop Culture, Science & Technology, History &
   Politics, Geography & Nature, Arts & Mythology, Sports & Vehicles) — see `CATEGORY_GROUPS` in
   `api.js` if you want to re-slice these.
-- **Streak + escalating celebration**: consecutive correct answers build a streak; the confetti
-  burst and "on fire" toast (`celebration.js`) get bigger at 3, 5, and 10+ in a row. Personal
-  best streak is remembered locally (`localStorage`), independent of the daily leaderboard.
+- **Streak + mythological ascension**: consecutive correct answers build a streak that climbs
+  through a small pantheon (`celebration.js`) — the Muses, Hermes, Athena, Apollo, Heracles,
+  Odysseus, the Minotaur, the Hydra, Poseidon, Ares, Hera, and finally Zeus at 24+ — each with
+  its own confetti color, icon, and message, escalating in scale and (at the top tiers) a
+  screen-shake or lightning-flash effect. Personal best streak is remembered locally
+  (`localStorage`), independent of the daily leaderboard.
 - **Daily leaderboard**: nickname + streak, no login. Resets at midnight UTC. Requires the
   Cloudflare backend below.
 - **Challenge a friend**: encodes the actual question set plus your score directly into a
@@ -109,8 +112,18 @@ AdSense `<ins>` snippet. AdSense requires a live domain (not `localhost`) and a 
 policy — `public/privacy.html` is included, but fill in the `[date]` and `[contact email]`
 placeholders before submitting for approval.
 
+## Credits
+
+The mythological tier icons in `public/icons/gods/` and `public/icons/laurel-crown.svg` are from
+[game-icons.net](https://game-icons.net), licensed [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/):
+Drama masks, Winged leg, Owl, Sun, Muscle Up, Minotaur, Hydra, Trident, Crossed swords, Queen
+crown, Heavy lightning, and Laurel crown by [Lorc](https://lorcblog.blogspot.com); Trojan horse
+by [Delapouite](https://delapouite.com). Keep this credit if you redistribute the site.
+
 ## Icon / design resources for future customization
 
+- Icons (SVG, CC BY 3.0): [game-icons.net](https://game-icons.net) — deep mythology/fantasy/combat
+  coverage, exactly what powers the pantheon tiers above. Needs attribution (see Credits).
 - Icons (SVG, MIT-licensed): [Lucide](https://lucide.dev), [Heroicons](https://heroicons.com),
   [Tabler Icons](https://tabler.io/icons)
 - Consistent cross-platform emoji: [Twemoji](https://twemoji.twitter.com),
