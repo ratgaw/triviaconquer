@@ -212,28 +212,50 @@ async function insertQuestions(cleaned, env, stats) {
   }
 }
 
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function runDailyIngestion(env) {
-  const stats = { pulled: 0, added: 0, rejectedDuplicate: 0, rejectedQuality: 0 };
+  const stats = { pulled: 0, added: 0, rejectedDuplicate: 0, rejectedQuality: 0, byGroup: {} };
 
-  for (const group of CATEGORY_GROUPS) {
-    for (const difficulty of DIFFICULTIES) {
-      const perDifficulty = Math.ceil(DAILY_TARGET_PER_GROUP / DIFFICULTIES.length);
+  // OTDB (and occasionally the-trivia-api.com) rate-limits sustained rapid requests. Processing
+  // group/difficulty combos in a fixed order meant whichever groups came last always lost out
+  // once the limit kicked in. Shuffling the order spreads that risk across all groups run to
+  // run, and a short pause between combos reduces how often the limit gets hit at all.
+  const tasks = shuffle(CATEGORY_GROUPS.flatMap((group) => DIFFICULTIES.map((difficulty) => ({ group, difficulty }))));
 
-      const [otdb, triviaApi] = await Promise.all([
-        pullFromOTDB(group, difficulty, perDifficulty),
-        pullFromTriviaApi(group, difficulty, perDifficulty),
-      ]);
-      let candidates = [...otdb, ...triviaApi];
+  for (const { group, difficulty } of tasks) {
+    const perDifficulty = Math.ceil(DAILY_TARGET_PER_GROUP / DIFFICULTIES.length);
 
-      if (env.ANTHROPIC_API_KEY && candidates.length < perDifficulty) {
-        candidates = [...candidates, ...(await generateViaLLM(group, difficulty, perDifficulty - candidates.length, env))];
-      }
+    const [otdb, triviaApi] = await Promise.all([
+      pullFromOTDB(group, difficulty, perDifficulty),
+      pullFromTriviaApi(group, difficulty, perDifficulty),
+    ]);
+    let candidates = [...otdb, ...triviaApi];
 
-      stats.pulled += candidates.length;
-      const cleaned = await qaAndClean(candidates, env);
-      stats.rejectedQuality += candidates.length - cleaned.length;
-      await insertQuestions(cleaned, env, stats);
+    if (env.ANTHROPIC_API_KEY && candidates.length < perDifficulty) {
+      candidates = [...candidates, ...(await generateViaLLM(group, difficulty, perDifficulty - candidates.length, env))];
     }
+
+    stats.pulled += candidates.length;
+    const cleaned = await qaAndClean(candidates, env);
+    stats.rejectedQuality += candidates.length - cleaned.length;
+
+    const before = stats.added;
+    await insertQuestions(cleaned, env, stats);
+    stats.byGroup[group.id] = (stats.byGroup[group.id] || 0) + (stats.added - before);
+
+    await sleep(200);
   }
 
   await env.DB.prepare(
