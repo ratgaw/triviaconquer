@@ -17,6 +17,10 @@ const MAX_ENTRIES = 25;
 const TWO_DAYS_SECONDS = 60 * 60 * 24 * 2;
 const MODES = ['classic', 'endless'];
 const MAX_QUESTIONS_PER_REQUEST = 50;
+// Upper bound on how many rows we pull per query before filtering out already-seen ones in JS.
+// Comfortably above any current category's size (currently tens to ~100 rows), with a lot of
+// headroom as the catalog keeps growing ~100+ questions/day — cheap for D1 to scan at this size.
+const QUESTION_POOL_LIMIT = 2000;
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -105,15 +109,23 @@ async function handleQuestionsGet(url, env) {
   const groupIds = (url.searchParams.get('groups') || '').split(',').filter(isValidGroupId);
   const difficulty = url.searchParams.get('difficulty') || 'any';
   const amount = Math.min(Math.max(parseInt(url.searchParams.get('amount'), 10) || 10, 1), MAX_QUESTIONS_PER_REQUEST);
-  const exclude = (url.searchParams.get('exclude') || '')
-    .split(',')
-    .map((s) => parseInt(s, 10))
-    .filter(Number.isInteger);
+  const exclude = new Set(
+    (url.searchParams.get('exclude') || '')
+      .split(',')
+      .map((s) => parseInt(s, 10))
+      .filter(Number.isInteger)
+  );
 
   if (groupIds.length === 0) {
     return Response.json({ questions: [], exhausted: true });
   }
 
+  // Excluded ids are filtered here in JS rather than as a SQL "NOT IN (...)" clause — a
+  // long-lived player's exclude list can grow into the hundreds, and binding that many
+  // parameters in one query hit D1's parameter limit and made every request 500. A plain
+  // in-memory Set lookup has no such ceiling, and each group/difficulty combo is small enough
+  // (capped at QUESTION_POOL_LIMIT rows) that fetching the whole pool and filtering client-side
+  // (server-side, but "client" to the DB) is cheap.
   const bindings = [...groupIds];
   let sql = `SELECT id, group_id, difficulty, type, question, correct_answer, incorrect_answers, explanation FROM questions WHERE group_id IN (${groupIds.map(() => '?').join(',')})`;
 
@@ -121,16 +133,14 @@ async function handleQuestionsGet(url, env) {
     sql += ' AND difficulty = ?';
     bindings.push(difficulty);
   }
-  if (exclude.length > 0) {
-    sql += ` AND id NOT IN (${exclude.map(() => '?').join(',')})`;
-    bindings.push(...exclude);
-  }
   sql += ' ORDER BY RANDOM() LIMIT ?';
-  bindings.push(amount);
+  bindings.push(QUESTION_POOL_LIMIT);
 
   const { results } = await env.DB.prepare(sql).bind(...bindings).all();
+  const unseen = exclude.size > 0 ? results.filter((row) => !exclude.has(row.id)) : results;
+  const picked = unseen.slice(0, amount);
 
-  const questions = results.map((row) => ({
+  const questions = picked.map((row) => ({
     id: row.id,
     groupId: row.group_id,
     difficulty: row.difficulty,
