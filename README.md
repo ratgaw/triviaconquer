@@ -4,30 +4,36 @@ A no-signup, no-subscription trivia web app. Pick one or more categories and a d
 click through questions one at a time, chase a streak, and challenge a friend to beat your score.
 
 Plain HTML/CSS/JS — no build step, no framework. Questions come live from the free
-[Open Trivia Database](https://opentdb.com) API. The daily leaderboard uses a Cloudflare Pages
-Function + KV (see below) — everything else works on any static host with zero setup.
+[Open Trivia Database](https://opentdb.com) API. The daily leaderboard uses a Cloudflare Worker
++ KV (see below) — everything else works on any static host with zero setup.
+
+**Repo layout**: site files live in `public/` (this is what gets served). `worker.js` and
+`wrangler.jsonc` at the repo root are Cloudflare-specific and only matter for the leaderboard —
+any other static host just needs the contents of `public/`.
 
 ## Run it locally
 
 Any static file server works:
 
-```bash
-python -m http.server 8080
-```
-```bash
-npx serve .
-```
-
-This machine didn't have Python or Node on PATH, so a throwaway `serve.ps1` script (plain
-PowerShell, no dependencies) is included for local testing:
+Serve the **`public/`** folder specifically (that's the site root, not the repo root):
 
 ```bash
-powershell -ExecutionPolicy Bypass -File serve.ps1
+python -m http.server 8080 --directory public
+```
+```bash
+npx serve public
 ```
 
-Delete `serve.ps1` before deploying — it's dev-only. Note: the leaderboard's `/api/leaderboard`
-endpoint only exists once deployed to Cloudflare Pages (see below), so locally the leaderboard UI
-will show "not available" — that's expected, not a bug.
+This machine didn't have Python or Node on PATH, so a throwaway `public/serve.ps1` script (plain
+PowerShell, no dependencies) is included for local testing — run it from inside `public/`:
+
+```bash
+powershell -ExecutionPolicy Bypass -File public/serve.ps1
+```
+
+`public/serve.ps1` is dev-only (already gitignored). Note: the leaderboard's `/api/leaderboard`
+endpoint only exists once deployed to Cloudflare (see below), so locally the leaderboard UI will
+show "not available" — that's expected, not a bug.
 
 ## Features
 
@@ -44,21 +50,26 @@ will show "not available" — that's expected, not a bug.
   shareable URL (`challenge.js`) — no backend involved. Opening the link shows a head-to-head
   comparison after they play the identical questions.
 
-## Setting up the daily leaderboard (Cloudflare Pages + KV)
+## Setting up the daily leaderboard (Cloudflare Worker + KV)
 
-The leaderboard code is fully written (`functions/api/leaderboard.js` + `leaderboard.js`) and
-degrades gracefully without it — the rest of the site works either way. **Skip this until
-everything else is confirmed working**, then come back and do this once:
+Cloudflare has unified Pages into its "Workers" product. A Git-connected Worker project deploys
+via Wrangler using `wrangler.jsonc` (repo root) — it defines `public/` as the static assets
+directory and `worker.js` as the script that handles anything not matched by a static file,
+which in this app means just `/api/leaderboard`. This is different from the older "Pages
+Functions" (`functions/api/*.js`) convention — that approach doesn't apply to new Git-connected
+Worker projects, which is why this repo uses `worker.js` + `wrangler.jsonc` instead.
 
-1. Push this folder to a GitHub/GitLab repo (or use direct upload) and create a Cloudflare Pages
-   project from it: https://developers.cloudflare.com/pages/get-started/
-2. Create a KV namespace: https://developers.cloudflare.com/kv/get-started/ — name it anything,
-   e.g. `quicktrivia-leaderboard`.
-3. Bind it to the Pages project: Pages project → Settings → Functions → KV namespace bindings →
-   add a binding with **variable name exactly `LEADERBOARD_KV`**, pointing at the namespace from
-   step 2. (Docs: https://developers.cloudflare.com/pages/functions/bindings/#kv-namespaces)
-4. Redeploy. That's it — no code changes needed, no API keys to paste anywhere. The function
-   reads the binding by that exact name, so as long as it's bound, `/api/leaderboard` works.
+The leaderboard code is fully written and degrades gracefully without it — the rest of the site
+works either way.
+
+1. In the Cloudflare dashboard: **Workers & Pages → Create → Import a repository**, select this
+   GitHub repo. Leave **Build command** empty and **Deploy command** as `npx wrangler deploy` —
+   Wrangler reads `wrangler.jsonc` automatically, no extra build config needed.
+2. `wrangler.jsonc` already references a KV binding named `LEADERBOARD_KV` pointed at a specific
+   namespace ID. If you're using a different KV namespace, update the `id` field in
+   `wrangler.jsonc` to match yours (Cloudflare dashboard → Storage & Databases → KV → your
+   namespace → copy its ID).
+3. Deploy (or push to the connected branch to trigger a redeploy).
 
 **Once you've done this, let me know and I'll help verify it end-to-end** (submit a score,
 confirm it shows up, confirm it's gone the next UTC day).
@@ -75,8 +86,10 @@ Known limitations, by design for a no-login casual leaderboard:
 
 ## Deploying
 
-Static site — any host works (Cloudflare Pages, Netlify, Vercel, GitHub Pages), except the
-leaderboard specifically needs Cloudflare Pages for the Functions + KV piece described above.
+The contents of `public/` are a plain static site — any host works (Netlify, Vercel, GitHub
+Pages, Cloudflare) if you don't need the leaderboard. The leaderboard specifically needs the
+Cloudflare Worker + KV setup described above, since `worker.js` and `wrangler.jsonc` are
+Cloudflare-specific.
 
 ## Turning it into an "app"
 
@@ -89,11 +102,11 @@ needed.
 
 ## Monetization (ads only, no accounts)
 
-Placeholder slots are marked in `index.html` (`#ad-top`, `#ad-bottom`). Once you have a Google
-AdSense account approved for the live domain, replace each placeholder `<div>` with the AdSense
-`<ins>` snippet. AdSense requires a live domain (not `localhost`) and a visible privacy policy —
-`privacy.html` is included, but fill in the `[date]` and `[contact email]` placeholders before
-submitting for approval.
+Placeholder slots are marked in `public/index.html` (`#ad-top`, `#ad-bottom`). Once you have a
+Google AdSense account approved for the live domain, replace each placeholder `<div>` with the
+AdSense `<ins>` snippet. AdSense requires a live domain (not `localhost`) and a visible privacy
+policy — `public/privacy.html` is included, but fill in the `[date]` and `[contact email]`
+placeholders before submitting for approval.
 
 ## Icon / design resources for future customization
 
@@ -107,8 +120,9 @@ submitting for approval.
 
 ## Customizing
 
-- **Category groups**: `CATEGORY_GROUPS` in `api.js`.
-- **Question count per round**: `amounts` array in `app.js` (`renderSetup`).
-- **Colors/branding**: CSS variables at the top of `styles.css`.
-- **Profanity blocklist**: `BLOCKLIST` in `profanity-filter.js` (shared by client and the
-  Cloudflare function — keep both in sync since they import the same file).
+- **Category groups**: `CATEGORY_GROUPS` in `public/api.js`.
+- **Question count per round**: `amounts` array in `public/app.js` (`renderSetup`).
+- **Colors/branding**: CSS variables at the top of `public/styles.css`.
+- **Profanity blocklist**: `BLOCKLIST` in `public/profanity-filter.js` — a single file imported
+  by both the browser (`public/app.js`) and the Worker (`worker.js`), so there's nothing to keep
+  in sync manually.

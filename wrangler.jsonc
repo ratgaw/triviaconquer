@@ -1,0 +1,11 @@
+{
+  "name": "triviaconquer",
+  "compatibility_date": "2026-07-25",
+  "main": "worker.js",
+  "assets": {
+    "directory": "./public/"
+  },
+  "kv_namespaces": [
+    { "binding": "LEADERBOARD_KV", "id": "e2d66b584003407c959e1524e9ea7c85" }
+  ]
+}
