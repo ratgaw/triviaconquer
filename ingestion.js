@@ -9,6 +9,7 @@ import { CATEGORY_GROUPS } from './public/category-groups.js';
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
 const DAILY_TARGET_PER_GROUP = 15; // new questions per group per day, spread across difficulties
 const QA_BATCH_SIZE = 15;
+const BACKFILL_BATCH_SIZE = 60; // existing questions to add explanations to per ingestion run
 const LLM_MODEL = 'claude-haiku-4-5-20251001';
 
 const NAMED_ENTITIES = {
@@ -234,6 +235,44 @@ async function insertQuestions(cleaned, env, stats) {
   }
 }
 
+// Adds explanations to existing questions that don't have one — either ingested before this
+// feature existed, or ingested without an LLM key at the time. Runs a bounded batch per
+// ingestion pass so it catches up gradually rather than in one huge (slow, expensive) sweep.
+async function backfillExplanations(env) {
+  if (!env.ANTHROPIC_API_KEY) return { checked: 0, updated: 0 };
+
+  const { results } = await env.DB.prepare(`SELECT id, question, correct_answer FROM questions WHERE explanation = '' LIMIT ?`)
+    .bind(BACKFILL_BATCH_SIZE)
+    .all();
+  if (results.length === 0) return { checked: 0, updated: 0 };
+
+  const prompt = `For each trivia question below, write a one or two sentence "explanation" — extra context or a fun fact about the answer, the kind of thing that makes someone say "huh, interesting." Keep it factual and concise, under 200 characters.
+
+Input:
+${JSON.stringify(results.map((r, i) => ({ index: i, question: r.question, correctAnswer: r.correct_answer })))}
+
+Return ONLY a JSON array, one entry per input item, same order, in this exact shape:
+[{"index": 0, "explanation": "..."}]`;
+
+  let updated = 0;
+  try {
+    const text = await callClaude(prompt, 4096, env);
+    if (text) {
+      const parsed = JSON.parse(extractJsonArray(text));
+      for (const r of parsed) {
+        const row = results[r.index];
+        if (!row || typeof r.explanation !== 'string' || !r.explanation) continue;
+        await env.DB.prepare('UPDATE questions SET explanation = ? WHERE id = ?').bind(r.explanation.slice(0, 240), row.id).run();
+        updated++;
+      }
+    }
+  } catch {
+    // leave the rest for next run
+  }
+
+  return { checked: results.length, updated };
+}
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -279,6 +318,8 @@ export async function runDailyIngestion(env) {
 
     await sleep(200);
   }
+
+  stats.backfill = await backfillExplanations(env);
 
   await env.DB.prepare(
     `INSERT INTO ingestion_log (run_at, source, pulled, added, rejected_duplicate, rejected_quality) VALUES (?, ?, ?, ?, ?, ?)`

@@ -56,15 +56,23 @@ no way to serve real questions without the deployed D1 catalog behind them.
   `ANTHROPIC_API_KEY` is configured), a short one/two-sentence explanation is generated alongside
   it and stored with the question. It appears below the answers once you've picked one. Questions
   ingested without an LLM key (or ingested before this feature existed) simply have no
-  explanation, and the box doesn't render — nothing to configure.
+  explanation, and the box doesn't render — nothing to configure. Each ingestion run also
+  backfills explanations onto up to 60 older questions that don't have one yet
+  (`backfillExplanations` in `ingestion.js`), so coverage fills in gradually across days rather
+  than all at once.
 - **No repeated questions**: the browser remembers every question ID you've been served
   (`public/seen-questions.js`, persisted in `localStorage` — not just for one session) and asks
   the catalog to exclude them next time. A question only repeats once you've actually exhausted
   the unseen supply for that category/difficulty combination.
 - **Endless Mode**: an "♾️ Endless (no limit)" option alongside the usual 5/10/15/20 question
-  counts — keeps serving questions until you stop. When the unseen supply for your chosen
-  categories runs dry, you're shown a choice: end the run, continue anyway (allowing repeats), or
-  add another category to keep going without repeats.
+  counts — keeps serving questions until you run out of lives or stop. When the unseen supply for
+  your chosen categories runs dry, you're shown a choice: end the run, continue anyway (allowing
+  repeats), or add another category to keep going without repeats.
+  - **Lives**: you start with 5. A wrong answer costs one; hit 0 and the run ends (you still see
+    the reveal/explanation for that last question before it's over). Every 10 questions answered,
+    you regain a life automatically (capped at 5). Every 6 questions, if you're below 5 lives,
+    you're offered an optional hard question as a "trial" — answer it correctly for a bonus life
+    back, with no penalty for getting it wrong.
 - **Streak + mythological ascension**: consecutive correct answers build a streak that climbs
   through a small pantheon (`celebration.js`) — the Muses, Hermes, Athena, Apollo, Heracles,
   Odysseus, the Minotaur, the Hydra, Poseidon, Ares, Hera, and finally Zeus at 24+ — each with
@@ -75,7 +83,9 @@ no way to serve real questions without the deployed D1 catalog behind them.
   - **Classic (20Q)** — best score out of a 20-question round specifically (other round lengths
     are still fully playable, just not ranked — comparing a score out of 5 against a score out
     of 20 wouldn't be a fair leaderboard).
-  - **Endless Streak** — highest streak reached in an Endless Mode run.
+  - **Endless (longest run)** — ranked by total questions survived before the run ended (lives
+    depleted, or you chose to stop); each entry also shows that run's best correct-answer streak
+    as extra context, though it isn't the ranking metric.
 - **Challenge a friend**: encodes the actual question set plus your score directly into a
   shareable URL (`challenge.js`) — no backend involved. Opening the link shows a head-to-head
   comparison after they play the identical questions.

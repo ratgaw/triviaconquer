@@ -9,9 +9,12 @@ const root = document.getElementById('app');
 const NICKNAME_KEY = 'triviaconquer:nickname';
 const BEST_STREAK_KEY = 'triviaconquer:bestStreak';
 const ENDLESS_BATCH_SIZE = 10;
+const MAX_LIVES = 5;
+const LIFE_BONUS_INTERVAL = 10; // every N questions answered, +1 life automatically (capped)
+const HARD_TRIAL_INTERVAL = 6; // every N questions answered, offer an opt-in hard question for a life
 
 const state = {
-  view: 'setup', // 'setup' | 'challenge-intro' | 'playing' | 'endless-exhausted' | 'endless-add-category' | 'summary' | 'leaderboard' | 'loading' | 'error'
+  view: 'setup', // 'setup' | 'challenge-intro' | 'playing' | 'bonus-offer' | 'bonus-question' | 'endless-exhausted' | 'endless-add-category' | 'summary' | 'leaderboard' | 'loading' | 'error'
   selectedGroups: new Set(),
   difficulty: 'any',
   amount: 10, // number (5/10/15/20) or 'endless'
@@ -23,6 +26,9 @@ const state = {
   endlessGroupIds: [], // endless only — can grow via "add another category"
   repeatsAllowedForRun: false, // endless only — set once the player opts into repeats
   addCategorySelection: new Set(),
+  lives: MAX_LIVES, // endless only
+  bonusQuestion: null, // endless only — the hard "trial" question, when offered
+  bonusSelectedAnswer: null,
   score: 0,
   streak: 0,
   longestStreakThisRound: 0,
@@ -50,6 +56,10 @@ function render() {
       return renderChallengeIntro();
     case 'playing':
       return renderPlaying();
+    case 'bonus-offer':
+      return renderBonusOffer();
+    case 'bonus-question':
+      return renderBonusQuestion();
     case 'endless-exhausted':
       return renderEndlessExhausted();
     case 'endless-add-category':
@@ -229,6 +239,7 @@ async function startEndlessMode() {
   state.score = 0;
   state.streak = 0;
   state.longestStreakThisRound = 0;
+  state.lives = MAX_LIVES;
   state.selectedAnswer = null;
   state.opponent = null;
   state.leaderboardSubmitted = false;
@@ -237,12 +248,30 @@ async function startEndlessMode() {
   render();
 }
 
+// Called right after a normal endless question is answered (right or wrong). Handles the
+// automatic life-bonus checkpoint and the opt-in hard-trial offer before actually advancing —
+// running out of lives is handled separately, at the point of answering (see renderPlaying).
 async function nextEndlessQuestion() {
   state.selectedAnswer = null;
   state.totalAnswered += 1;
 
+  if (state.totalAnswered % LIFE_BONUS_INTERVAL === 0 && state.lives < MAX_LIVES) {
+    state.lives += 1;
+  }
+
+  if (state.totalAnswered % HARD_TRIAL_INTERVAL === 0 && state.lives < MAX_LIVES) {
+    state.view = 'bonus-offer';
+    render();
+    return;
+  }
+
+  await advanceToNextEndlessQuestion();
+}
+
+async function advanceToNextEndlessQuestion() {
   if (state.questions.length > 0) {
     state.currentQuestion = state.questions.shift();
+    state.view = 'playing';
     render();
     return;
   }
@@ -268,6 +297,92 @@ async function nextEndlessQuestion() {
   state.currentQuestion = state.questions.shift();
   state.view = 'playing';
   render();
+}
+
+// ---------- Endless mode: opt-in hard trial for a bonus life ----------
+
+function renderBonusOffer() {
+  root.innerHTML = `
+    <section class="panel panel-animate bonus-panel">
+      <h2>⚡ A Trial Presents Itself</h2>
+      <p class="muted">Answer one HARD question correctly to win back a life. No penalty if you get it wrong — this one's pure upside.</p>
+      <button type="button" id="accept-bonus-btn" class="btn btn-primary btn-large">Accept the Trial</button>
+      <button type="button" id="skip-bonus-btn" class="btn btn-secondary btn-large">Skip</button>
+    </section>
+  `;
+
+  document.getElementById('accept-bonus-btn').addEventListener('click', startBonusQuestion);
+  document.getElementById('skip-bonus-btn').addEventListener('click', advanceToNextEndlessQuestion);
+}
+
+async function startBonusQuestion() {
+  state.view = 'loading';
+  state.loadingMessage = 'Summoning a trial…';
+  render();
+
+  // Bonus trials are a side mechanic, not part of the main progression — allow repeats so they
+  // never compete with (or get exhausted by) the main run's unseen-question pool.
+  const { questions } = await fetchQuestions({
+    groupIds: state.endlessGroupIds,
+    difficulty: 'hard',
+    amount: 1,
+    allowRepeats: true,
+  });
+
+  if (questions.length === 0) {
+    await advanceToNextEndlessQuestion();
+    return;
+  }
+
+  state.bonusQuestion = questions[0];
+  state.bonusSelectedAnswer = null;
+  state.view = 'bonus-question';
+  render();
+}
+
+function renderBonusQuestion() {
+  const q = state.bonusQuestion;
+  const revealed = state.bonusSelectedAnswer !== null;
+  const won = revealed && state.bonusSelectedAnswer === q.correctAnswer;
+
+  const answerButtons = q.answers
+    .map((answer) => {
+      let cls = 'answer-btn';
+      if (revealed) {
+        if (answer === q.correctAnswer) cls += ' answer-btn--correct';
+        else if (answer === state.bonusSelectedAnswer) cls += ' answer-btn--incorrect';
+        else cls += ' answer-btn--dimmed';
+      }
+      return `<button type="button" class="${cls}" data-answer="${encodeURIComponent(answer)}" ${revealed ? 'disabled' : ''}>${answer}</button>`;
+    })
+    .join('');
+
+  root.innerHTML = `
+    <section class="panel panel-animate bonus-panel">
+      <div class="meta-row">
+        <span class="badge">${q.category}</span>
+        <span class="badge badge--hard">hard trial</span>
+      </div>
+      <h2 class="question-text">⚡ ${q.question}</h2>
+      <div class="answers ${q.type === 'boolean' ? 'answers--boolean' : ''}">${answerButtons}</div>
+      ${revealed ? `<p class="bonus-result">${won ? '🎉 A life restored!' : 'No life gained this time — no harm done.'}</p>` : ''}
+      ${revealed ? '<button type="button" id="bonus-continue-btn" class="btn btn-primary btn-large">Continue</button>' : ''}
+    </section>
+  `;
+
+  if (!revealed) {
+    root.querySelectorAll('[data-answer]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.bonusSelectedAnswer = decodeURIComponent(btn.dataset.answer);
+        if (state.bonusSelectedAnswer === q.correctAnswer) {
+          state.lives = Math.min(state.lives + 1, MAX_LIVES);
+        }
+        renderBonusQuestion();
+      });
+    });
+  } else {
+    document.getElementById('bonus-continue-btn').addEventListener('click', advanceToNextEndlessQuestion);
+  }
 }
 
 function renderEndlessExhausted() {
@@ -450,12 +565,20 @@ function renderPlaying() {
     ? `<img class="streak-badge-icon" src="${iconUrl(streakTier)}" alt="" />`
     : '🔥';
 
+  const livesRow = isEndless
+    ? `<div class="lives-row">${Array.from({ length: MAX_LIVES }, (_, i) => `<span class="life-icon ${i < state.lives ? 'life-icon--full' : 'life-icon--empty'}">${i < state.lives ? '❤️' : '🖤'}</span>`).join('')}</div>`
+    : '';
+
+  const outOfLives = isEndless && revealed && state.lives <= 0;
+
   root.innerHTML = `
     <section class="panel panel-animate play-panel">
       <div class="progress-row">
         <div class="progress-track ${isEndless ? 'progress-track--endless' : ''}"><div class="progress-fill" style="width:${progressPct}%"></div></div>
         <span class="progress-label">${progressLabel}${isEndless ? ' ♾️' : ''}</span>
       </div>
+
+      ${livesRow}
 
       <div class="meta-row">
         <span class="badge">${q.category}</span>
@@ -470,7 +593,8 @@ function renderPlaying() {
 
       ${revealed && q.explanation ? `<div class="explanation-box"><span class="explanation-label">📜 Did you know?</span><p>${escapeHtml(q.explanation)}</p></div>` : ''}
 
-      ${revealed ? '<button type="button" id="next-btn" class="btn btn-primary btn-large">Next Question</button>' : ''}
+      ${outOfLives ? '<p class="out-of-lives-note">💀 Out of lives — your run ends here.</p>' : ''}
+      ${revealed ? `<button type="button" id="next-btn" class="btn btn-primary btn-large">${outOfLives ? 'See Your Fate' : 'Next Question'}</button>` : ''}
     </section>
   `;
 
@@ -486,12 +610,16 @@ function renderPlaying() {
           celebrate(state.streak);
         } else {
           state.streak = 0;
+          if (isEndless) state.lives = Math.max(0, state.lives - 1);
         }
         renderPlaying();
       });
     });
   } else {
-    document.getElementById('next-btn').addEventListener('click', isEndless ? nextEndlessQuestion : nextQuestion);
+    document.getElementById('next-btn').addEventListener('click', () => {
+      if (outOfLives) return endEndlessRun();
+      return isEndless ? nextEndlessQuestion() : nextQuestion();
+    });
   }
 }
 
@@ -534,18 +662,21 @@ function renderSummary() {
       })()
     : '';
 
+  const diedToLives = isEndless && state.lives <= 0;
+  const summaryHeading = diedToLives ? 'Your Legend Ends Here' : 'The Dust Settles';
+
   const scoreBlock = isEndless
-    ? `<p class="summary-score">${state.totalAnswered} <span class="summary-pct">questions answered</span></p>`
+    ? `<p class="summary-score">${state.totalAnswered} <span class="summary-pct">questions survived</span></p>`
     : `<p class="summary-score">${state.score} / ${total} <span class="summary-pct">(${Math.round((state.score / total) * 100)}%)</span></p>`;
 
   const leaderboardMode = isEndless ? 'endless' : 'classic';
-  const leaderboardValue = isEndless ? state.longestStreakThisRound : state.score;
-  const qualifies = isEndless ? state.longestStreakThisRound > 0 : state.amount === 20;
-  const leaderboardTitle = isEndless ? '🏆 Enter the Endless Hall of Champions' : '🏆 Enter the Classic Hall of Champions (20Q)';
+  const leaderboardValue = isEndless ? state.totalAnswered : state.score;
+  const qualifies = isEndless ? state.totalAnswered > 0 : state.amount === 20;
+  const leaderboardTitle = isEndless ? '🏆 Enter the Endless Hall of Champions (longest run)' : '🏆 Enter the Classic Hall of Champions (20Q)';
 
   root.innerHTML = `
     <section class="panel panel-animate summary-panel">
-      <h2>The Dust Settles</h2>
+      <h2>${summaryHeading}</h2>
       ${scoreBlock}
       <p class="summary-streak">Best streak this round: <strong>${state.longestStreakThisRound}</strong>${isNewBest ? ' — a new personal record! 🏆' : ''}</p>
 
@@ -569,7 +700,7 @@ function renderSummary() {
     </section>
   `;
 
-  renderLeaderboardSubmitArea(leaderboardMode, leaderboardValue, qualifies);
+  renderLeaderboardSubmitArea(leaderboardMode, leaderboardValue, qualifies, { streak: state.longestStreakThisRound });
 
   document.getElementById('challenge-btn').addEventListener('click', onChallengeClick);
   document.getElementById('replay-btn').addEventListener('click', () => {
@@ -589,7 +720,7 @@ function regenerateFallbackRound() {
   startGame();
 }
 
-function renderLeaderboardSubmitArea(mode, value, qualifies) {
+function renderLeaderboardSubmitArea(mode, value, qualifies, extra = {}) {
   const area = document.getElementById('leaderboard-submit-area');
   if (!area) return;
 
@@ -597,7 +728,7 @@ function renderLeaderboardSubmitArea(mode, value, qualifies) {
     area.innerHTML =
       mode === 'classic'
         ? `<p class="muted">Play a 20-question round to qualify for the Classic leaderboard.</p>`
-        : `<p class="muted">Land at least a 1-streak to earn your place in the Endless Hall.</p>`;
+        : `<p class="muted">Answer at least one question to earn your place in the Endless Hall.</p>`;
     return;
   }
 
@@ -615,10 +746,10 @@ function renderLeaderboardSubmitArea(mode, value, qualifies) {
     <p id="leaderboard-submit-message" class="submit-message"></p>
   `;
 
-  document.getElementById('submit-leaderboard-btn').addEventListener('click', () => onSubmitLeaderboard(mode, value));
+  document.getElementById('submit-leaderboard-btn').addEventListener('click', () => onSubmitLeaderboard(mode, value, extra));
 }
 
-async function onSubmitLeaderboard(mode, value) {
+async function onSubmitLeaderboard(mode, value, extra = {}) {
   const input = document.getElementById('nickname-input');
   const messageEl = document.getElementById('leaderboard-submit-message');
   const clean = sanitizeNickname(input.value);
@@ -636,7 +767,7 @@ async function onSubmitLeaderboard(mode, value) {
   localStorage.setItem(NICKNAME_KEY, clean);
 
   messageEl.textContent = 'Submitting…';
-  const result = await submitToLeaderboard(mode, clean, value);
+  const result = await submitToLeaderboard(mode, clean, value, extra);
 
   if (!result.ok) {
     messageEl.textContent = `Couldn't submit: ${result.error}`;
@@ -712,7 +843,7 @@ function renderLeaderboard() {
   const tabs = `
     <div class="leaderboard-tabs">
       <button type="button" class="leaderboard-tab ${state.leaderboardMode === 'classic' ? 'leaderboard-tab--active' : ''}" data-mode="classic">Classic (20Q)</button>
-      <button type="button" class="leaderboard-tab ${state.leaderboardMode === 'endless' ? 'leaderboard-tab--active' : ''}" data-mode="endless">Endless Streak</button>
+      <button type="button" class="leaderboard-tab ${state.leaderboardMode === 'endless' ? 'leaderboard-tab--active' : ''}" data-mode="endless">Endless (longest run)</button>
     </div>
   `;
 
@@ -725,14 +856,17 @@ function renderLeaderboard() {
     body = `<p class="muted">No champions crowned yet today. Be the first to claim the laurel!</p>`;
   } else {
     const rows = state.leaderboardEntries
-      .map(
-        (e, i) => `
+      .map((e, i) => {
+        const valueLabel = state.leaderboardMode === 'classic' ? `${e.value}/20` : `${e.value} questions`;
+        const streakLabel =
+          state.leaderboardMode === 'endless' && Number.isInteger(e.streak) ? `<span class="leaderboard-sub">🔥 best streak ${e.streak}</span>` : '';
+        return `
         <li class="leaderboard-row">
           <span class="leaderboard-rank">#${i + 1}</span>
           <span class="leaderboard-name">${escapeHtml(e.nickname)}</span>
-          <span class="leaderboard-streak">${state.leaderboardMode === 'classic' ? `${e.value}/20` : `🔥 ${e.value}`}</span>
-        </li>`
-      )
+          <span class="leaderboard-value-col"><span class="leaderboard-streak">${valueLabel}</span>${streakLabel}</span>
+        </li>`;
+      })
       .join('');
     body = `<ol class="leaderboard-list">${rows}</ol>`;
   }

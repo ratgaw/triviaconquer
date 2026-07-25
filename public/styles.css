@@ -716,6 +716,51 @@ body {
 .leaderboard-name { flex: 1; font-weight: 600; }
 .leaderboard-streak { font-weight: 700; color: var(--terracotta); }
 
+.leaderboard-value-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.leaderboard-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Endless mode: lives */
+.lives-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.life-icon {
+  font-size: 1.1rem;
+  transition: transform 0.2s ease;
+}
+
+.life-icon--empty { opacity: 0.35; filter: grayscale(1); }
+
+/* Endless mode: bonus hard trial */
+.bonus-panel { text-align: center; }
+.bonus-panel .question-text { text-align: left; }
+.bonus-panel .answers { margin-bottom: 4px; }
+
+.bonus-result {
+  font-weight: 700;
+  color: var(--primary);
+  margin: 12px 0 0;
+}
+
+.out-of-lives-note {
+  text-align: center;
+  font-weight: 700;
+  color: var(--incorrect);
+  margin: 14px 0 0;
+}
+
 /* Celebration: confetti burst */
 .confetti-layer {
   position: fixed;

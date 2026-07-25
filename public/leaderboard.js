@@ -1,9 +1,11 @@
 // Talks to the Cloudflare Worker at /api/leaderboard (see worker.js). Two independent boards
 // share this endpoint via a `mode` param: 'classic' (best score out of a 20-question round) and
-// 'endless' (highest streak reached in Endless Mode) — kept separate since comparing a score
-// out of 20 against an open-ended streak wouldn't be a fair ranking. This endpoint only exists
-// once deployed on Cloudflare with the D1 + KV bindings set up; locally or on any other static
-// host these calls fail and the UI shows a "not available" note instead of breaking the app.
+// 'endless' (longest run — total questions survived before running out of lives or stopping,
+// with best streak kept alongside each entry as extra context) — kept separate since comparing
+// a score out of 20 against an open-ended run length wouldn't be a fair ranking. This endpoint
+// only exists once deployed on Cloudflare with the D1 + KV bindings set up; locally or on any
+// other static host these calls fail and the UI shows a "not available" note instead of
+// breaking the app.
 
 const ENDPOINT = '/api/leaderboard';
 
@@ -18,12 +20,12 @@ export async function fetchLeaderboard(mode) {
   }
 }
 
-export async function submitToLeaderboard(mode, nickname, value) {
+export async function submitToLeaderboard(mode, nickname, value, extra = {}) {
   try {
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode, nickname, value }),
+      body: JSON.stringify({ mode, nickname, value, ...extra }),
     });
     if (!res.ok) {
       const message = await res.text();

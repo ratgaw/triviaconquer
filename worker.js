@@ -48,6 +48,7 @@ async function handleLeaderboardPost(request, env) {
   const mode = MODES.includes(body.mode) ? body.mode : 'classic';
   const nickname = sanitizeNickname(body.nickname);
   const value = Number(body.value);
+  const streak = Number(body.streak);
 
   if (!nickname || !isValidNickname(nickname)) {
     return new Response('Invalid or inappropriate nickname', { status: 400 });
@@ -59,14 +60,18 @@ async function handleLeaderboardPost(request, env) {
     return new Response('Classic leaderboard is scored out of 20 questions', { status: 400 });
   }
   if (mode === 'endless' && value > 100000) {
-    return new Response('Invalid streak value', { status: 400 });
+    return new Response('Invalid run length', { status: 400 });
   }
 
   const key = leaderboardKey(mode);
   const raw = await env.LEADERBOARD_KV.get(key);
   const entries = raw ? JSON.parse(raw) : [];
 
-  entries.push({ nickname, value, createdAt: Date.now() });
+  const entry = { nickname, value, createdAt: Date.now() };
+  if (mode === 'endless' && Number.isInteger(streak) && streak >= 0) {
+    entry.streak = streak;
+  }
+  entries.push(entry);
   entries.sort((a, b) => b.value - a.value);
   const trimmed = entries.slice(0, MAX_ENTRIES);
 
