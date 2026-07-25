@@ -9,7 +9,7 @@
     { "binding": "LEADERBOARD_KV", "id": "e2d66b584003407c959e1524e9ea7c85" }
   ],
   "d1_databases": [
-    { "binding": "DB", "database_name": "triviaconquer-questions", "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID" }
+    { "binding": "DB", "database_name": "triviaconquer-questions", "database_id": "e0b17309-f803-40a5-a59d-3d7eab29d0a5" }
   ],
   "triggers": {
     "crons": ["0 6 * * *"]
