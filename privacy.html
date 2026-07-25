@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — QuickTrivia</title>
+<meta name="theme-color" content="#5b3df5" />
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .legal { max-width: 680px; margin: 32px auto; padding: 0 16px 48px; line-height: 1.6; }
+  .legal h1 { font-size: 1.6rem; }
+  .legal h2 { font-size: 1.1rem; margin-top: 28px; }
+  .legal p, .legal li { color: var(--text-muted); }
+  .legal a { color: var(--primary); }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <img src="icons/icon.svg" alt="" class="brand-icon" />
+    <span class="brand-name">QuickTrivia</span>
+  </div>
+</header>
+
+<main class="legal">
+  <h1>Privacy Policy</h1>
+  <p><em>Last updated: <!-- UPDATE THIS DATE WHEN YOU PUBLISH --> [date]</em></p>
+
+  <p>QuickTrivia doesn't use accounts, logins, or passwords. This page explains the small amount
+  of data the app does handle.</p>
+
+  <h2>What's stored on your device</h2>
+  <ul>
+    <li>An optional nickname you choose, if you submit a score to the daily leaderboard.</li>
+    <li>Your personal best streak, so the app can tell you when you beat it.</li>
+  </ul>
+  <p>Both are stored locally in your browser (<code>localStorage</code>) and are never sent
+  anywhere except as described below.</p>
+
+  <h2>Daily leaderboard</h2>
+  <p>If you choose to submit a score, your nickname, streak, and a timestamp are stored on the
+  server and shown publicly on that day's leaderboard to all visitors. Entries are automatically
+  removed after 2 days. Don't use a nickname that identifies you if you'd rather not be
+  publicly visible.</p>
+
+  <h2>Challenge links</h2>
+  <p>The "Challenge a Friend" feature encodes a set of trivia questions and your score directly
+  into the link itself — nothing is stored on a server for this feature, and no data about who
+  you send it to is collected.</p>
+
+  <h2>Trivia questions</h2>
+  <p>Questions are fetched live from the third-party <a href="https://opentdb.com" target="_blank" rel="noopener">Open Trivia Database</a>.
+  No personal data is sent to it beyond a random, anonymous session token used to avoid repeating
+  questions.</p>
+
+  <h2>Advertising</h2>
+  <p>This site may show ads served by Google AdSense. Google and its partners may use cookies
+  and similar technologies to serve ads based on your visits to this and other sites. You can
+  opt out of personalized advertising by visiting
+  <a href="https://adssettings.google.com" target="_blank" rel="noopener">Google Ads Settings</a>.</p>
+
+  <h2>Contact</h2>
+  <p><!-- REPLACE WITH YOUR CONTACT EMAIL --> [contact email]</p>
+
+  <p><a href="index.html">← Back to QuickTrivia</a></p>
+</main>
+</body>
+</html>

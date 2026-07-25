@@ -1,0 +1,13 @@
+{
+  "name": "QuickTrivia",
+  "short_name": "QuickTrivia",
+  "description": "Pick categories and difficulty, then click through trivia questions one at a time.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f2ff",
+  "theme_color": "#5b3df5",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

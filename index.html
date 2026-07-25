@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>QuickTrivia — Pick a Category, Test Your Knowledge</title>
+<meta name="description" content="Free, no-signup trivia. Pick your categories and difficulty, then click through questions one at a time." />
+<meta name="theme-color" content="#5b3df5" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icons/icon.svg" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <img src="icons/icon.svg" alt="" class="brand-icon" />
+    <span class="brand-name">QuickTrivia</span>
+  </div>
+  <p class="tagline">Pick a category. Pick a difficulty. Start playing.</p>
+</header>
+
+<!-- AD SLOT: top banner. Replace this div with your AdSense <ins> unit once approved. -->
+<div class="ad-slot ad-slot--banner" id="ad-top" aria-hidden="true">Ad space</div>
+
+<main id="app" class="app"></main>
+
+<!-- AD SLOT: footer banner. Replace this div with your AdSense <ins> unit once approved. -->
+<div class="ad-slot ad-slot--banner" id="ad-bottom" aria-hidden="true">Ad space</div>
+
+<footer class="site-footer">
+  <p>Trivia questions courtesy of the <a href="https://opentdb.com" target="_blank" rel="noopener">Open Trivia Database</a>. · <a href="privacy.html">Privacy Policy</a></p>
+</footer>
+
+<script type="module" src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
