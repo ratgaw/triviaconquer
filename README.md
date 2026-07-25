@@ -89,6 +89,13 @@ no way to serve real questions without the deployed D1 catalog behind them.
 - **Challenge a friend**: encodes the actual question set plus your score directly into a
   shareable URL (`challenge.js`) — no backend involved. Opening the link shows a head-to-head
   comparison after they play the identical questions.
+- **Subtle sound effects**: a chime on correct/wrong answers, a short arpeggio that grows with
+  each pantheon tier, and a thunder crack for Zeus (`public/sounds.js`) — all synthesized live
+  with the Web Audio API, no audio files to host or license. A speaker icon fixed in the top
+  corner toggles them off; the choice is remembered in `localStorage`.
+- **Ambient "rounds played today" counter**: a small line on the setup screen showing real
+  site-wide activity for the day (`public/stats.js` + `/api/stats` in `worker.js`, backed by the
+  same KV as the leaderboard). Hides itself if the count is zero or the endpoint isn't reachable.
 
 ## Setting up the trivia catalog and leaderboard (Cloudflare Worker + D1 + KV)
 

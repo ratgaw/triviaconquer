@@ -3,6 +3,8 @@ import { celebrate, tierFor, iconUrl } from './celebration.js';
 import { buildChallengeUrl, parseChallengeFromUrl, shareChallenge } from './challenge.js';
 import { fetchLeaderboard, submitToLeaderboard } from './leaderboard.js';
 import { isValidNickname, sanitizeNickname } from './profanity-filter.js';
+import { playCorrect, playWrong, isMuted, toggleMuted } from './sounds.js';
+import { fetchRoundsToday, recordRoundStarted } from './stats.js';
 
 const root = document.getElementById('app');
 
@@ -138,6 +140,7 @@ function renderSetup() {
         Enter the Arena
       </button>
       <button type="button" id="view-leaderboard-btn" class="btn btn-secondary btn-large">🏆 Hall of Champions</button>
+      <p id="ambient-stat" class="ambient-stat"></p>
     </section>
   `;
 
@@ -163,6 +166,14 @@ function renderSetup() {
 
   document.getElementById('start-btn').addEventListener('click', startGame);
   document.getElementById('view-leaderboard-btn').addEventListener('click', () => openLeaderboard('setup', 'classic'));
+  loadAmbientStat();
+}
+
+async function loadAmbientStat() {
+  const rounds = await fetchRoundsToday();
+  const el = document.getElementById('ambient-stat');
+  if (!el || !rounds) return; // hide entirely if unavailable or nothing played yet today
+  el.textContent = `🔥 ${rounds} round${rounds === 1 ? '' : 's'} played today`;
 }
 
 async function startGame() {
@@ -207,6 +218,7 @@ function beginRound(questions, opponent) {
   state.leaderboardSubmitted = false;
   state.shareStatus = '';
   state.view = 'playing';
+  recordRoundStarted();
   render();
 }
 
@@ -245,6 +257,7 @@ async function startEndlessMode() {
   state.leaderboardSubmitted = false;
   state.shareStatus = '';
   state.view = 'playing';
+  recordRoundStarted();
   render();
 }
 
@@ -376,6 +389,9 @@ function renderBonusQuestion() {
         state.bonusSelectedAnswer = decodeURIComponent(btn.dataset.answer);
         if (state.bonusSelectedAnswer === q.correctAnswer) {
           state.lives = Math.min(state.lives + 1, MAX_LIVES);
+          playCorrect();
+        } else {
+          playWrong();
         }
         renderBonusQuestion();
       });
@@ -607,10 +623,12 @@ function renderPlaying() {
           state.score += 1;
           state.streak += 1;
           state.longestStreakThisRound = Math.max(state.longestStreakThisRound, state.streak);
+          playCorrect();
           celebrate(state.streak);
         } else {
           state.streak = 0;
           if (isEndless) state.lives = Math.max(0, state.lives - 1);
+          playWrong();
         }
         renderPlaying();
       });
@@ -905,7 +923,22 @@ function escapeHtml(str) {
 
 // ---------- Init ----------
 
+function initSoundToggle() {
+  const btn = document.getElementById('sound-toggle-btn');
+  if (!btn) return;
+  const updateIcon = () => {
+    btn.textContent = isMuted() ? '🔇' : '🔊';
+  };
+  updateIcon();
+  btn.addEventListener('click', () => {
+    toggleMuted();
+    updateIcon();
+  });
+}
+
 function init() {
+  initSoundToggle();
+
   const incoming = parseChallengeFromUrl();
   if (incoming) {
     state.incomingChallenge = incoming;

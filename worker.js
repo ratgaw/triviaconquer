@@ -26,6 +26,25 @@ function leaderboardKey(mode) {
   return `leaderboard:${mode}:${todayKey()}`;
 }
 
+function statsKey() {
+  return `stats:rounds:${todayKey()}`;
+}
+
+// ---------- Ambient stats ----------
+
+async function handleStatsGet(env) {
+  const raw = await env.LEADERBOARD_KV.get(statsKey());
+  return Response.json({ date: todayKey(), roundsToday: raw ? Number(raw) : 0 });
+}
+
+async function handleStatsPost(env) {
+  const key = statsKey();
+  const raw = await env.LEADERBOARD_KV.get(key);
+  const count = (raw ? Number(raw) : 0) + 1;
+  await env.LEADERBOARD_KV.put(key, String(count), { expirationTtl: TWO_DAYS_SECONDS });
+  return Response.json({ ok: true, roundsToday: count });
+}
+
 // ---------- Leaderboard ----------
 
 async function handleLeaderboardGet(url, env) {
@@ -155,6 +174,12 @@ export default {
 
     if (url.pathname === '/api/ingest') {
       if (request.method === 'POST') return handleIngestPost(request, url, env);
+      return new Response('Method not allowed', { status: 405 });
+    }
+
+    if (url.pathname === '/api/stats') {
+      if (request.method === 'GET') return handleStatsGet(env);
+      if (request.method === 'POST') return handleStatsPost(env);
       return new Response('Method not allowed', { status: 405 });
     }
 

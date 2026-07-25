@@ -4,6 +4,7 @@
 // pre-colored per tier and stored in icons/gods/. No external animation library — a handful of
 // absolutely-positioned divs animated by CSS (see .confetti-piece / .streak-toast / .fx-flash
 // in styles.css), removed once their animation finishes.
+import { playTierUp, playThunder } from './sounds.js';
 
 const TIERS = [
   { min: 1, icon: 'muses', color: '#8a6bff', message: (s) => `Touched by the Muses — ${s} streak`, particles: 8, fontRem: 1.1 },
@@ -98,4 +99,7 @@ export function celebrate(streak) {
   spawnConfetti(tier);
   spawnStreakToast(tier, streak);
   spawnScreenEffect(tier);
+
+  if (tier.effect === 'lightning') playThunder();
+  else playTierUp(TIERS.indexOf(tier));
 }
