@@ -184,8 +184,13 @@ body {
 }
 
 .ad-slot {
+  display: none; /* stays hidden until app.js confirms real content is on screen — see updateAdVisibility() */
   width: min(728px, 92vw);
   margin: 12px auto;
+}
+
+.ad-slot--visible {
+  display: block;
 }
 
 .ad-slot-label {

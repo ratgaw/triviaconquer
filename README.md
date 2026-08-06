@@ -211,6 +211,11 @@ AdSense `<ins>` snippet. AdSense requires a live domain (not `localhost`) and a 
 policy — `public/privacy.html` is included, but fill in the `[date]` and `[contact email]`
 placeholders before submitting for approval.
 
+Ad slots are hidden by default (`.ad-slot { display: none; }` in `styles.css`) and only revealed
+by `updateAdVisibility()` in `app.js` once there's real content on screen — they stay hidden
+during the loading spinner and the error screen. This satisfies AdSense's "valuable inventory"
+policy, which disallows Google-served ads on screens without publisher content.
+
 ## Credits
 
 The mythological tier icons in `public/icons/gods/` and `public/icons/laurel-crown.svg` are from

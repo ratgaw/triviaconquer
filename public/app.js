@@ -49,6 +49,7 @@ const state = {
 };
 
 function render() {
+  updateAdVisibility();
   switch (state.view) {
     case 'loading':
       return renderLoading();
@@ -73,6 +74,17 @@ function render() {
     case 'error':
       return renderError();
   }
+}
+
+// AdSense's "valuable inventory" policy disallows ads on screens without real publisher
+// content — so the ad slots (hidden by default in CSS) only ever show once app.js confirms
+// there's actual content in #app, and stay hidden on the bare loading spinner and the
+// one-line error screen.
+function updateAdVisibility() {
+  const showAds = state.view !== 'loading' && state.view !== 'error';
+  document.querySelectorAll('.ad-slot').forEach((el) => {
+    el.classList.toggle('ad-slot--visible', showAds);
+  });
 }
 
 function renderLoading() {
